@@ -1,0 +1,171 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+}
+
+enum DomainStatus {
+  ACTIVE
+  EXPIRING_SOON
+  EXPIRED
+}
+
+enum AmcType {
+  WEBSITE_MAINTENANCE
+  SEO
+  ADS_MANAGEMENT
+  HOSTING
+  DOMAIN_MANAGEMENT
+  CUSTOM
+}
+
+enum PaymentStatus {
+  PAID
+  PENDING
+}
+
+enum AmcStatus {
+  ACTIVE
+  EXPIRING_SOON
+  EXPIRED
+}
+
+enum ActivityType {
+  DOMAIN_ADDED
+  DOMAIN_UPDATED
+  DOMAIN_DELETED
+  AMC_ADDED
+  AMC_UPDATED
+  AMC_DELETED
+  AMC_RENEWED
+  REMINDER_SENT
+  CLIENT_UPDATED
+}
+
+enum EmailStatus {
+  SENT
+  FAILED
+}
+
+enum EmailType {
+  DOMAIN_EXPIRY_30
+  DOMAIN_EXPIRY_15
+  DOMAIN_EXPIRY_7
+  DOMAIN_EXPIRED
+  AMC_EXPIRY_30
+  AMC_EXPIRY_15
+  AMC_EXPIRY_7
+  AMC_EXPIRED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(MANAGER)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Client {
+  id           String        @id @default(cuid())
+  name         String
+  companyName  String?
+  email        String?
+  phone        String?
+  notes        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  domains      Domain[]
+  amcContracts AmcContract[]
+  activities   ActivityLog[]
+}
+
+model Domain {
+  id           String       @id @default(cuid())
+  clientId     String
+  client       Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  domainName   String
+  registrar    String?
+  purchaseDate DateTime?
+  creationDate DateTime?
+  expiryDate   DateTime
+  autoRenew    Boolean      @default(false)
+  domainCost   Float?
+  loginUrl     String?
+  notes        String?
+  status       DomainStatus @default(ACTIVE)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  emailLogs    EmailLog[]
+}
+
+model AmcContract {
+  id            String        @id @default(cuid())
+  clientId      String
+  client        Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  amcType       AmcType
+  customType    String?
+  startDate     DateTime
+  expiryDate    DateTime
+  amount        Float
+  paymentStatus PaymentStatus @default(PENDING)
+  notes         String?
+  status        AmcStatus     @default(ACTIVE)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  emailLogs     EmailLog[]
+}
+
+model EmailLog {
+  id            String      @id @default(cuid())
+  emailType     EmailType
+  status        EmailStatus
+  recipient     String
+  subject       String
+  domainId      String?
+  domain        Domain?     @relation(fields: [domainId], references: [id], onDelete: SetNull)
+  amcContractId String?
+  amcContract   AmcContract? @relation(fields: [amcContractId], references: [id], onDelete: SetNull)
+  errorMessage  String?
+  sentAt        DateTime    @default(now())
+}
+
+model ActivityLog {
+  id           String       @id @default(cuid())
+  clientId     String
+  client       Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  activityType ActivityType
+  description  String
+  createdAt    DateTime     @default(now())
+}
+
+model Settings {
+  id               String   @id @default(cuid())
+  key              String   @unique
+  value            String
+  updatedAt        DateTime @updatedAt
+}
+
+model NotificationConfig {
+  id              String   @id @default(cuid())
+  adminEmail      String   @default("hello@formium.in")
+  additionalEmails String[] @default([])
+  domainAlerts    Boolean  @default(true)
+  amcAlerts       Boolean  @default(true)
+  systemAlerts    Boolean  @default(true)
+  updatedAt       DateTime @updatedAt
+}
