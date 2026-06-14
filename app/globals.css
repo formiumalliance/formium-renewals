@@ -54,7 +54,17 @@
   border-color: hsl(var(--border));
 
 }
-  body { @apply bg-background text-foreground antialiased; }
+  body {
+
+  background-color: hsl(var(--background));
+
+  color: hsl(var(--foreground));
+
+  -webkit-font-smoothing: antialiased;
+
+  -moz-osx-font-smoothing: grayscale;
+
+}
 }
 
 ::-webkit-scrollbar { width: 5px; height: 5px; }
