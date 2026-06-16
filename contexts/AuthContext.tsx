@@ -35,7 +35,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         headers: { Authorization: `Bearer ${stored}` },
       })
         .then(r => r.ok ? r.json() : null)
-        .then(u => { if (u) setUser(u) })
+        .then(u => {
+          if (u) setUser(u)
+          else {
+            // Token invalid, clear it
+            localStorage.removeItem('auth_token')
+          }
+        })
         .catch(() => {})
         .finally(() => setLoading(false))
     } else {
@@ -44,17 +50,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const login = useCallback(async (email: string, password: string) => {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    })
-    const data = await res.json()
-    if (!res.ok) return { error: data.error || 'Login failed' }
-    setUser(data.user)
-    setToken(data.token)
-    localStorage.setItem('auth_token', data.token)
-    return {}
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+      const data = await res.json()
+      if (!res.ok) return { error: data.error || 'Login failed' }
+
+      setUser(data.user)
+      setToken(data.token)
+      localStorage.setItem('auth_token', data.token)
+      return {}
+    } catch (err) {
+      return { error: 'Network error — please try again' }
+    }
   }, [])
 
   const logout = useCallback(async () => {
