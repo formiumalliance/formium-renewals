@@ -1,22 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 
-const PUBLIC_PATHS = ['/login', '/api/auth/login']
-
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Always allow public paths
-  if (PUBLIC_PATHS.some(p => pathname.startsWith(p))) {
+  // Allow all auth endpoints, static files, cron
+  if (
+    pathname.startsWith('/api/auth/') ||
+    pathname.startsWith('/api/cron') ||
+    pathname.startsWith('/_next/') ||
+    pathname.startsWith('/favicon') ||
+    pathname === '/login'
+  ) {
     return NextResponse.next()
   }
 
-  // Allow cron endpoint with Bearer token (checked inside the route)
-  if (pathname.startsWith('/api/cron')) {
-    return NextResponse.next()
-  }
-
-  // For API routes: check Authorization header or cookie
+  // Check token
   const token =
     request.cookies.get('auth_token')?.value ||
     request.headers.get('authorization')?.replace('Bearer ', '')
@@ -38,25 +37,22 @@ export function middleware(request: NextRequest) {
     return res
   }
 
-  // Admin-only route guard
-  const ADMIN_PATHS = ['/api/users', '/api/settings', '/dashboard/settings']
-  if (ADMIN_PATHS.some(p => pathname.startsWith(p)) && user.role !== 'ADMIN') {
+  // Admin-only routes
+  if (
+    (pathname.startsWith('/api/users') ||
+      pathname.startsWith('/api/settings') ||
+      pathname.startsWith('/dashboard/settings')) &&
+    user.role !== 'ADMIN'
+  ) {
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
-  // Inject user info into headers for API routes
-  const requestHeaders = new Headers(request.headers)
-  requestHeaders.set('x-user-id', user.userId)
-  requestHeaders.set('x-user-role', user.role)
-
-  return NextResponse.next({ request: { headers: requestHeaders } })
+  return NextResponse.next()
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|public).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 }
