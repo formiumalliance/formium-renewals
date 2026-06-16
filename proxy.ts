@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Completely skip middleware for these
+  // Completely skip for these paths
   if (
     pathname.startsWith('/api/auth/') ||
     pathname.startsWith('/api/cron') ||
@@ -31,7 +31,6 @@ export function middleware(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
-    // Admin-only API routes
     if (
       (pathname.startsWith('/api/users') || pathname.startsWith('/api/settings')) &&
       user.role !== 'ADMIN'
@@ -42,8 +41,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // For ALL page routes (/dashboard, etc.) — let the page handle auth
-  // The dashboard layout.tsx already redirects to /login if not authenticated
+  // All page routes — let dashboard/layout.tsx handle auth client-side
   return NextResponse.next()
 }
 
