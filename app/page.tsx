@@ -1,2 +1,5 @@
-import { redirect } from 'next/navigation'
-export default function Home() { redirect('/dashboard') }
+// After successful login, change:
+window.location.href = '/dashboard'
+
+// Back to:
+router.push('/dashboard')
