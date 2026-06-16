@@ -4,52 +4,46 @@ import { verifyToken } from '@/lib/auth'
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Allow all auth endpoints, static files, cron
+  // Completely skip middleware for these
   if (
     pathname.startsWith('/api/auth/') ||
     pathname.startsWith('/api/cron') ||
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/favicon') ||
-    pathname === '/login'
+    pathname === '/login' ||
+    pathname === '/'
   ) {
     return NextResponse.next()
   }
 
-  // Check token
-  const token =
-    request.cookies.get('auth_token')?.value ||
-    request.headers.get('authorization')?.replace('Bearer ', '')
+  // For API routes only — check token
+  if (pathname.startsWith('/api/')) {
+    const token =
+      request.cookies.get('auth_token')?.value ||
+      request.headers.get('authorization')?.replace('Bearer ', '')
 
-  if (!token) {
-    if (pathname.startsWith('/api/')) {
+    if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    return NextResponse.redirect(new URL('/login', request.url))
-  }
 
-  const user = verifyToken(token)
-  if (!user) {
-    if (pathname.startsWith('/api/')) {
+    const user = verifyToken(token)
+    if (!user) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
-    const res = NextResponse.redirect(new URL('/login', request.url))
-    res.cookies.delete('auth_token')
-    return res
-  }
 
-  // Admin-only routes
-  if (
-    (pathname.startsWith('/api/users') ||
-      pathname.startsWith('/api/settings') ||
-      pathname.startsWith('/dashboard/settings')) &&
-    user.role !== 'ADMIN'
-  ) {
-    if (pathname.startsWith('/api/')) {
+    // Admin-only API routes
+    if (
+      (pathname.startsWith('/api/users') || pathname.startsWith('/api/settings')) &&
+      user.role !== 'ADMIN'
+    ) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+
+    return NextResponse.next()
   }
 
+  // For ALL page routes (/dashboard, etc.) — let the page handle auth
+  // The dashboard layout.tsx already redirects to /login if not authenticated
   return NextResponse.next()
 }
 
